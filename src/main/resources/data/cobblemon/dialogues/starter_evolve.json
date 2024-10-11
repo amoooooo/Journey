@@ -1,0 +1,119 @@
+{
+  "escapeAction": "q.dialogue.set_page('farewell')",
+  "speakers": {
+    "professor": {
+      "name": "Professor Willow",
+      "face": {
+        "type": "artificial",
+        "modelType": "pokemon",
+        "identifier": "cobblemon:ditto",
+        "isLeftSide": false,
+        "aspects": []
+      }
+    },
+    "player": {
+      "face": "q.player.face(true);",
+      "name": {
+        "type": "expression",
+        "expression": "q.player.username"
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "intro",
+      "speaker": "professor",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Ah, ' + q.player.username + '! Just the trainer I was looking for.'"
+        },
+        "Your starter Pokémon holds incredible potential."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Really? Tell me more.",
+            "action": [
+              "v.player_response = 'Really? Tell me more.';",
+              "q.dialogue.set_page('professor-advice');"
+            ]
+          },
+          {
+            "text": "I'm ready to train!",
+            "action": [
+              "v.player_response = 'I'm ready to train!';",
+              "q.dialogue.set_page('professor-encouragement');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "professor-advice",
+      "speaker": "professor",
+      "lines": [
+        "Your starter can evolve and become even stronger.",
+        "To unlock its true potential, you need to train diligently."
+      ],
+      "input": "q.dialogue.set_page('next-steps');"
+    },
+    {
+      "id": "professor-encouragement",
+      "speaker": "professor",
+      "lines": [
+        "That's the spirit! Training is key to evolving your Pokémon.",
+        "Battle wild Pokémon and gain experience."
+      ],
+      "input": "q.dialogue.set_page('next-steps');"
+    },
+    {
+      "id": "next-steps",
+      "speaker": "professor",
+      "lines": [
+        "Start by defeating some wild Pokémon to strengthen your starter.",
+        "Then, focus on raising its level to prepare for evolution."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Any tips?",
+            "action": [
+              "q.dialogue.set_page('tips');"
+            ]
+          },
+          {
+            "text": "I'm on it!",
+            "action": [
+              "q.dialogue.set_page('farewell');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "tips",
+      "speaker": "professor",
+      "lines": [
+        "Remember, your starter gains experience from battles.",
+        "Also, certain items might help in its growth.",
+        "Keep pushing forward, and you'll witness its evolution soon!"
+      ],
+      "input": "q.dialogue.set_page('farewell');"
+    },
+    {
+      "id": "farewell",
+      "speaker": "professor",
+      "lines": [
+        "I have high hopes for you and your Pokémon.",
+        {
+          "type": "expression",
+          "expression": "'I have high hopes for you and your Pokémon. Good luck on your journey, ' + q.player.username + '!'"
+        }
+      ],
+      "input": "q.dialogue.close();"
+    }
+  ]
+}

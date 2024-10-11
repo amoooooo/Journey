@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "$mod_id$",
+  "id": "journey",
   "version": "${version}",
-  "name": "$mod_name$",
+  "name": "Journey",
   "description": "Template mod for SoulSoftware Fabric Server-Side mods",
   "authors": [
     "AmoAster",
@@ -10,13 +10,13 @@
   ],
   "entrypoints": {
     "main": [
-      "$mod_groud$.$mod_name$"
+      "aster.amo.journey.Journey"
     ]
   },
   "depends": {
     "fabricloader": ">=0.15.11",
     "minecraft": ">=1.20.1"
   },
-  "mixins": ["$mod_id$.mixins.json"],
-  "accessWidener": "$mod_id$.accesswidener"
+  "mixins": ["journey.mixins.json"],
+  "accessWidener": "journey.accesswidener"
 }

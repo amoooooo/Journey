@@ -1,0 +1,216 @@
+{
+  "escapeAction": "q.dialogue.set_page('farewell')",
+  "speakers": {
+    "fisher": {
+      "name": "Fisher Rick",
+      "face": {
+        "type": "artificial",
+        "modelType": "pokemon",
+        "identifier": "cobblemon:magikarp",
+        "isLeftSide": false,
+        "aspects": []
+      }
+    },
+    "player": {
+      "face": "q.player.face(true);",
+      "name": {
+        "type": "expression",
+        "expression": "q.player.username"
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "intro",
+      "speaker": "fisher",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Ahoy there, ' + q.player.username + '! Ready to catch some wild Pokémon?'"
+        },
+        "Fishing is a great way to find rare and powerful Pokémon."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "How does fishing work?",
+            "action": [
+              "v.player_response = 'How does fishing work?';",
+              "q.dialogue.set_page('fisher-fishing')"
+            ]
+          },
+          {
+            "text": "What is bait and how do I use it?",
+            "action": [
+              "v.player_response = 'What is bait and how do I use it?';",
+              "q.dialogue.set_page('fisher-bait')"
+            ]
+          },
+          {
+            "text": "Tell me about the Poké Rod.",
+            "action": [
+              "v.player_response = 'Tell me about the Poké Rod.';",
+              "q.dialogue.set_page('fisher-poke-rod')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fisher-fishing",
+      "speaker": "fisher",
+      "lines": [
+        "To start fishing, you'll need a Poké Rod and some bait.",
+        "Cast your line into the water, and wait for a Pokémon to bite!"
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "What Pokémon?",
+            "action": [
+              "q.dialogue.set_page('fisher-pokemon-types');"
+            ]
+          },
+          {
+            "text": "Thanks!",
+            "action": [
+              "q.dialogue.set_page('intro');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fisher-bait",
+      "speaker": "fisher",
+      "lines": [
+        "Bait helps attract specific types of Pokémon to your line.",
+        "Different baits can increase your chances of catching certain Pokémon."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "What types?",
+            "action": [
+              "q.dialogue.set_page('fisher-bait-types');"
+            ]
+          },
+          {
+            "text": "Got it!",
+            "action": [
+              "q.dialogue.set_page('intro');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fisher-poke-rod",
+      "speaker": "fisher",
+      "lines": [
+        "The Poké Rod is essential for fishing Pokémon.",
+        "It allows you to cast your line, reel in Pokémon, and handle your catches."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "How?",
+            "action": [
+              "q.dialogue.set_page('fisher-rod-usage');"
+            ]
+          },
+          {
+            "text": "Thanks!",
+            "action": [
+              "q.dialogue.set_page('intro');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fisher-pokemon-types",
+      "speaker": "fisher",
+      "lines": [
+        "You can catch a variety of Pokémon, from common ones like Magikarp to rare and elusive species.",
+        "Some Pokémon might only appear in specific bodies of water or under certain conditions."
+      ],
+      "input": "q.dialogue.set_page('fisher-tips');"
+    },
+    {
+      "id": "fisher-bait-types",
+      "speaker": "fisher",
+      "lines": [
+        "There are several types of bait you can use:",
+        "• **Worms** – Great for common water Pokémon.",
+        "• **Insect Attractants** – Increases chances for bug-type Pokémon.",
+        "• **Shiny Lures** – Helps in catching rare shiny Pokémon."
+      ],
+      "input": "q.dialogue.set_page('fisher-tips');"
+    },
+    {
+      "id": "fisher-rod-usage",
+      "speaker": "fisher",
+      "lines": [
+        "Using the Poké Rod is simple:",
+        "1. Equip your Poké Rod from your inventory.",
+        "2. Select the bait you want to use.",
+        "3. Right-click (or the equivalent action) to cast your line.",
+        "4. Wait for a Pokémon to bite, then reel it in!"
+      ],
+      "input": "q.dialogue.set_page('fisher-tips');"
+    },
+    {
+      "id": "fisher-tips",
+      "speaker": "fisher",
+      "lines": [
+        "Here are some tips to improve your fishing:",
+        "• **Use the right bait** for the Pokémon you're targeting.",
+        "• **Check the water's condition**; calm waters are better for certain catches.",
+        "• **Upgrade your Poké Rod** to access more powerful fishing techniques."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Any more?",
+            "action": [
+              "q.dialogue.set_page('fisher-more-tips');"
+            ]
+          },
+          {
+            "text": "I'm ready!",
+            "action": [
+              "q.dialogue.set_page('farewell');"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fisher-more-tips",
+      "speaker": "fisher",
+      "lines": [
+        "• **Time your casts**; some Pokémon are more active during certain times of the day.",
+        "• **Keep an eye on the bobber**; subtle movements might indicate a strong Pokémon bite.",
+        "• **Stock up on bait** before heading out to avoid interruptions during your fishing sessions."
+      ],
+      "input": "q.dialogue.set_page('farewell');"
+    },
+    {
+      "id": "farewell",
+      "speaker": "fisher",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "Happy fishing, ' + q.player.username + '! May you catch many wonderful Pokémon on your journey."
+        }
+      ],
+      "input": "q.dialogue.close();"
+    }
+  ]
+}
