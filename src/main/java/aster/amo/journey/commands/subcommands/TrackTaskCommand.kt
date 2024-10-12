@@ -9,7 +9,7 @@ import aster.amo.journey.utils.inform
 import aster.amo.journey.utils.parseToNative
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.tree.LiteralCommandNode
-import me.lucko.fabric.api.permissions.v0.Permissions
+
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
@@ -19,8 +19,7 @@ import net.minecraft.commands.arguments.ResourceLocationArgument.id as resourceL
 
 class TrackTaskCommand : SubCommand {
     override fun build(): LiteralCommandNode<CommandSourceStack> {
-        return Commands.literal("tracktask")
-            .requires(Permissions.require("${Journey.MOD_ID}.command.tracktask", 0)) // Permission level 0 for all players
+        return Commands.literal("track")
             .then(
                 Commands.argument("task_id", resourceLocation())
                     .suggests { context, builder ->

@@ -1,0 +1,3 @@
+if(q.player.has_completed_task('journey:introduction') != 0) {
+    c.npc.run_dialogue(c.player, 'space_cadet'
+}

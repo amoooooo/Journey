@@ -1,10 +1,10 @@
 package aster.amo.journey.commands
 
-import com.mojang.brigadier.CommandDispatcher
-import com.mojang.brigadier.tree.LiteralCommandNode
 import aster.amo.journey.Journey
 import aster.amo.journey.commands.subcommands.*
-import me.lucko.fabric.api.permissions.v0.Permissions
+import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.tree.LiteralCommandNode
+
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 
@@ -14,7 +14,6 @@ class BaseCommand {
     fun register(dispatcher: CommandDispatcher<CommandSourceStack>) {
         val rootCommands: List<LiteralCommandNode<CommandSourceStack>> = aliases.map {
             Commands.literal(it)
-                .requires(Permissions.require("${Journey.MOD_ID}.command.base", 2))
                 .build()
         }
 
@@ -24,11 +23,15 @@ class BaseCommand {
             StartTaskCommand().build(),
             RemoveTaskCommand().build(),
             TrackTaskCommand().build(),
+            RemoveCompletedTaskCommand().build(),
+            ZoneCommand().build()
         )
-
         rootCommands.forEach { root ->
             subCommands.forEach { sub -> root.addChild(sub) }
             dispatcher.root.addChild(root)
         }
+
+        dispatcher.root.addChild(TrackTaskCommand().build())
+        dispatcher.root.addChild(ZoneCommand().build())
     }
 }

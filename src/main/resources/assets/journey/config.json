@@ -5,5 +5,6 @@
   "subtask_description_separator": "<gold>┇</gold>",
   "quest_sidebar_title": "<gold>Quests</gold>",
   "task_description_max_length": 48,
-  "subtask_description_max_length": 48
+  "subtask_description_max_length": 48,
+  "show_description_in_sidebar": true
 }

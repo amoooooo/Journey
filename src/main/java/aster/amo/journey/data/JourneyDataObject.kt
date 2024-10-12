@@ -37,6 +37,7 @@ import java.util.UUID
 import kotlin.math.absoluteValue
 
 class JourneyDataObject(player: Player) : DataObject(player) {
+    var showZoneBounds: Boolean = false
     var starterPokemon: UUID? = null
 
     val tasksProgress: LinkedHashMap<ResourceLocation, TaskProgress> = linkedMapOf()
@@ -45,8 +46,6 @@ class JourneyDataObject(player: Player) : DataObject(player) {
     var sidebar: SidebarInterface? = null
     val completedQuests: MutableMap<ResourceLocation, TaskProgress> = mutableMapOf()
     var trackedTaskId: ResourceLocation? = null
-
-    val pathfindingDummy: Allay by lazy { Allay(EntityType.ALLAY, player.level()) }
 
     override fun readFromNbt(tag: CompoundTag) {
         tasksProgress.clear()
@@ -67,6 +66,7 @@ class JourneyDataObject(player: Player) : DataObject(player) {
             completedQuests[taskProgress.taskId] = taskProgress
         }
         trackedTaskId = tag.getString("trackedTaskId").asResource()
+        showZoneBounds = tag.getBoolean("showZoneBounds")
         rebuildActiveSubtasksIndex()
     }
 
@@ -83,6 +83,7 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         }
         tag.put("completedQuests", completedQuestsListTag)
         tag.putString("trackedTaskId", trackedTaskId?.toString() ?: "")
+        tag.putBoolean("showZoneBounds", showZoneBounds)
     }
 
     private fun rebuildActiveSubtasksIndex() {
@@ -185,7 +186,11 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         if (sidebar != null) {
             SidebarUtils.removeSidebar((player as ServerPlayer).connection, sidebar)
         }
-        val taskSidebar: Sidebar = if(player.isShiftKeyDown) ScrollableSidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM, 20) else Sidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM)
+        val taskSidebar: Sidebar =
+            if(player.isShiftKeyDown)
+                ScrollableSidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM, 20)
+            else
+                Sidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM)
         taskSidebar.set { builder ->
             addTaskLines(builder)
         }
@@ -199,65 +204,75 @@ class JourneyDataObject(player: Player) : DataObject(player) {
     }
 
     private fun addTaskLines(builder: LineBuilder) {
+        var index = 0
         for (taskID in tasksProgress.values) {
+            index++
+            if(index >= ConfigManager.CONFIG.maxTasksShown) {
+                break
+            }
             val task = TaskRegistry.TASKS[taskID.taskId]
             val taskName = task?.name ?: return
             builder.add(SidebarLine.create(0, taskName.parseToNative(), BlankFormat.INSTANCE))
-            val firstLine = if (task.description.isNotEmpty()) task.description[0] else ""
-            val style = firstLine.parseToNative().style
-            val parts = mutableListOf<String>()
-            var currentLine = ""
-            for (word in firstLine.split(" ")) {
-                if (currentLine.length + word.length > ConfigManager.CONFIG.taskDescriptionMaxLength) {
-                    parts.add(currentLine)
-                    currentLine = " $word"
-                } else {
-                    currentLine += " $word"
+            if(ConfigManager.CONFIG.showDescriptionInSidebar) {
+                val firstLine = if (task.description.isNotEmpty()) task.description[0] else ""
+                val style = firstLine.parseToNative().style
+                val parts = mutableListOf<String>()
+                var currentLine = ""
+                for (word in firstLine.split(" ")) {
+                    if (currentLine.length + word.length > ConfigManager.CONFIG.taskDescriptionMaxLength) {
+                        parts.add(currentLine)
+                        currentLine = " $word"
+                    } else {
+                        currentLine += " $word"
+                    }
                 }
-            }
-            parts.add(currentLine)
-            for (part in parts) {
-                builder.add(
-                    SidebarLine.create(
-                        0,
-                        (" ${ConfigManager.CONFIG.taskSeparatorCharacter} ").parseToNative()
-                            .append(part.parseToNative().copy().setStyle(style)),
-                        BlankFormat.INSTANCE
+                parts.add(currentLine)
+                for (part in parts) {
+                    builder.add(
+                        SidebarLine.create(
+                            0,
+                            (" ${ConfigManager.CONFIG.taskSeparatorCharacter} ").parseToNative()
+                                .append(part.parseToNative().copy().setStyle(style)),
+                            BlankFormat.INSTANCE
+                        )
                     )
-                )
+                }
             }
             addSubtaskLines(taskID, builder)
         }
     }
 
     private fun addSubtaskLines(taskID: TaskProgress, builder: LineBuilder) {
-        for (subtaskProgress in tasksProgress[taskID.taskId]?.subtasksProgress?.values ?: emptyList()) {
+        val subtasks = tasksProgress[taskID.taskId]?.subtasksProgress?.values ?: emptyList()
+        for (subtaskProgress in subtasks) {
             val subtask = TaskRegistry.getSubtask(taskID.taskId, subtaskProgress.subtaskId) ?: continue
             builder.add(
                 createTrackingLine(taskID, subtask)
             )
-            val firstLine = if (subtask.description.isNotEmpty()) subtask.description else ""
-            val style = firstLine.parseToNative().style
-            val parts = mutableListOf<String>()
-            var currentLine = ""
-            for (word in firstLine.split(" ")) {
-                if (currentLine.length + word.length > ConfigManager.CONFIG.subtaskDescriptionMaxLength) {
-                    parts.add(currentLine)
-                    currentLine = word
-                } else {
-                    currentLine += " $word"
+            if(ConfigManager.CONFIG.showDescriptionInSidebar && subtasks.size < 2) {
+                val firstLine = if (subtask.description.isNotEmpty()) subtask.description else ""
+                val style = firstLine.parseToNative().style
+                val parts = mutableListOf<String>()
+                var currentLine = ""
+                for (word in firstLine.split(" ")) {
+                    if (currentLine.length + word.length > ConfigManager.CONFIG.subtaskDescriptionMaxLength) {
+                        parts.add(currentLine)
+                        currentLine = word
+                    } else {
+                        currentLine += " $word"
+                    }
                 }
-            }
-            parts.add(currentLine)
-            for (part in parts) {
-                builder.add(
-                    SidebarLine.create(
-                        0,
-                        ("    ${ConfigManager.CONFIG.subtaskDescriptionSeparator} ").parseToNative()
-                            .append(part.parseToNative().copy().setStyle(style)),
-                        BlankFormat.INSTANCE
+                parts.add(currentLine)
+                for (part in parts) {
+                    builder.add(
+                        SidebarLine.create(
+                            0,
+                            ("    ${ConfigManager.CONFIG.subtaskDescriptionSeparator} ").parseToNative()
+                                .append(part.parseToNative().copy().setStyle(style)),
+                            BlankFormat.INSTANCE
+                        )
                     )
-                )
+                }
             }
         }
     }

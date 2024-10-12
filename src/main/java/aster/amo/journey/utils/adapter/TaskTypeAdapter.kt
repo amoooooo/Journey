@@ -1,4 +1,4 @@
-package aster.amo.journey.utils
+package aster.amo.journey.utils.adapter
 
 import aster.amo.journey.task.Icon
 import aster.amo.journey.task.RepeatType
@@ -6,7 +6,6 @@ import aster.amo.journey.task.Subtask
 import aster.amo.journey.task.Task
 import aster.amo.journey.task.reward.Reward
 import com.google.gson.*
-import net.minecraft.resources.ResourceLocation
 import java.lang.reflect.Type
 
 class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
@@ -36,6 +35,7 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
         val tasks = jsonObject.getAsJsonArray("tasks")?.map {
             context.deserialize<Subtask>(it, Subtask::class.java)
         } ?: emptyList()
+        val starterNPC = jsonObject.get("start_npc")?.asString ?: ""
 
         return Task(
             name = name,
@@ -47,7 +47,8 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
             repeatType = repeatType,
             repeatInterval = repeatInterval,
             repeatLimit = repeatLimit,
-            tasks = tasks.toCollection(ArrayDeque())
+            tasks = tasks.toCollection(ArrayDeque()),
+            starterNPC = starterNPC
         )
     }
 
@@ -70,6 +71,7 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
         val tasksArray = JsonArray()
         src.tasks.forEach { tasksArray.add(context.serialize(it, Subtask::class.java)) }
         jsonObject.add("tasks", tasksArray)
+        jsonObject.addProperty("start_npc", src.starterNPC)
 
         return jsonObject
     }

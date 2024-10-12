@@ -96,7 +96,7 @@ dependencies {
         modImplementation(it)
     }
     // PermissionsAPI
-    modImplementation("me.lucko:fabric-permissions-api:0.2-SNAPSHOT")
+//    modImplementation("me.lucko:fabric-permissions-api:0.3.1")
 
     // Serversided GUIs
     modImplementation("eu.pb4:sgui:1.6.1+1.21.1")
@@ -129,7 +129,7 @@ dependencies {
 
     // Local Libraries
     modImplementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
-    include("aster.amo.ceremony:Ceremony:2.0.0")?.let {
+    include("aster.amo.ceremony:Ceremony:2.0.1")?.let {
         modImplementation(it)
     }
     include("org.reflections:reflections:0.10.2")?.let { implementation(it) }

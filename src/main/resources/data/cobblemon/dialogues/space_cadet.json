@@ -1,0 +1,120 @@
+{
+  "escapeAction": "q.dialogue.set_page('farewell')",
+  "speakers": {
+    "space_cadet": {
+      "name": "Space Cadet Nova",
+      "face": {
+        "type": "artificial",
+        "modelType": "pokemon",
+        "identifier": "cobblemon:piplup",
+        "isLeftSide": false,
+        "aspects": []
+      }
+    },
+    "player": {
+      "face": "q.player.face(true);",
+      "name": {
+        "type": "expression",
+        "expression": "q.player.username"
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "intro",
+      "speaker": "space_cadet",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Welcome to Ultra Space, ' + q.player.username + '!'"
+        },
+        "I'm Space Cadet Nova, your guide in this vast expanse."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Hello",
+            "action": [
+              "v.player_response = 'Hello';",
+              "q.dialogue.set_page('what_is_ultra')"
+            ]
+          },
+          {
+            "text": "What is it?",
+            "action": [
+              "v.player_response = 'What is it?';",
+              "q.dialogue.set_page('what_is_ultra')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "what_is_ultra",
+      "speaker": "space_cadet",
+      "lines": [
+        "Ultra Space is a realm beyond our own, filled with mysteries and adventures.",
+        "Explore its wonders and uncover the secrets it holds."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Interesting",
+            "action": [
+              "v.player_response = 'Interesting';",
+              "q.dialogue.set_page('observe_tower')"
+            ]
+          },
+          {
+            "text": "Tell me more",
+            "action": [
+              "v.player_response = 'Tell me more';",
+              "q.dialogue.set_page('observe_tower')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "observe_tower",
+      "speaker": "space_cadet",
+      "lines": [
+        "To get started, head over to the central tower and observe its operations.",
+        "It serves as the hub for all activities in Ultra Space."
+      ],
+      "input": {
+        "type": "option",
+        "options": [
+          {
+            "text": "Got it",
+            "action": [
+              "v.player_response = 'Got it';",
+              "q.dialogue.set_page('farewell')"
+            ]
+          },
+          {
+            "text": "Thanks",
+            "action": [
+              "v.player_response = 'Thanks';",
+              "q.dialogue.set_page('farewell')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "farewell",
+      "speaker": "space_cadet",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Safe travels, ' + q.player.username + '! Welcome to Ultra Megalopolis.'"
+        },
+        "Feel free to explore and embark on your first quests."
+      ],
+      "input": "q.dialogue.close();"
+    }
+  ]
+}

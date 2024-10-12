@@ -21,27 +21,7 @@ object MolangUtils {
                 "player" to java.util.function.Function { params ->
                     return@Function serverPlayer.asMoLangValue().addFunctions(hashMapOf(
                         // Add functions within 'player' struct
-                        "has_item" to java.util.function.Function { params ->
-                            val itemId = params.getString(0)
-                            val hasItem = serverPlayer.inventory.contains(
-                                ItemStack(
-                                    BuiltInRegistries.ITEM.get(
-                                        ResourceLocation.parse(itemId)
-                                    )
-                                )
-                            )
-                            DoubleValue(if (hasItem) 1.0 else 0.0)
-                        },
-                        "pokedex" to java.util.function.Function { params ->
-                            // Return Pokédex data struct
-                            Cobblemon.playerDataManager.getPokedexData(serverPlayer).struct
-                        },
-                        "starter_pokemon" to java.util.function.Function { params ->
-                            val data = serverPlayer get JourneyDataObject
-                            data.starterPokemon?.let {
-                                Cobblemon.storage.getParty(serverPlayer)[it]
-                            } ?: QueryStruct(hashMapOf())
-                        }
+
                     ))
                 }
             )

@@ -1,4 +1,4 @@
-package aster.amo.journey.utils
+package aster.amo.journey.utils.adapter
 
 import aster.amo.journey.task.event.JourneyEvent
 import com.google.gson.JsonDeserializationContext

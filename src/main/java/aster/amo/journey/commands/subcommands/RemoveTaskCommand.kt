@@ -9,7 +9,7 @@ import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.suggestion.Suggestions
 import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import com.mojang.brigadier.tree.LiteralCommandNode
-import me.lucko.fabric.api.permissions.v0.Permissions
+
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
@@ -25,7 +25,6 @@ import java.util.concurrent.CompletableFuture
 class RemoveTaskCommand : SubCommand {
     override fun build(): LiteralCommandNode<CommandSourceStack> {
         return Commands.literal("removetask")
-            .requires(Permissions.require("${Journey.MOD_ID}.command.removetask", 2))
             .then(
                 Commands.argument("player", GameProfileArgument.gameProfile())
                     .then(

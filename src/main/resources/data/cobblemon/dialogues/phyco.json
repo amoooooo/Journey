@@ -1,0 +1,158 @@
+{
+  "escapeAction": "q.dialogue.set_page('farewell')",
+  "speakers": {
+    "captain_phyco": {
+      "name": "Captain Phyco",
+      "face": {
+        "type": "artificial",
+        "modelType": "pokemon",
+        "identifier": "cobblemon:psyduck",
+        "isLeftSide": false,
+        "aspects": []
+      }
+    },
+    "player": {
+      "face": "q.player.face(true);",
+      "name": {
+        "type": "expression",
+        "expression": "q.player.username"
+      }
+    }
+  },
+  "pages": [
+    {
+      "id": "intro",
+      "speaker": "captain_phyco",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Greetings, ' + q.player.username + '! Welcome to Ultra Megalopolis.'"
+        },
+        "I'm Captain Phyco, your guide to the adventures that await in this vibrant hub."
+      ],
+      "input": {
+        "type": "option",
+        "vertical": true,
+        "options": [
+          {
+            "text": "Hi",
+            "action": [
+              "v.player_response = 'Hi';",
+              "q.dialogue.set_page('features')"
+            ]
+          },
+          {
+            "text": "What can I do?",
+            "action": [
+              "v.player_response = 'What can I do?';",
+              "q.dialogue.set_page('features')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "features",
+      "speaker": "captain_phyco",
+      "lines": [
+        "In Ultra Megalopolis, you can:",
+        "• Battle trainers and Cobblemon",
+        "• Trade with other players",
+        "• Participate in events and quests",
+        "• Explore diverse Ultra Space biomes",
+        "• Customize your Cobblemon and gear"
+      ],
+      "input": {
+        "type": "option",
+        "vertical": true,
+        "options": [
+          {
+            "text": "Awesome",
+            "action": [
+              "v.player_response = 'Awesome';",
+              "q.dialogue.set_page('next_step')"
+            ]
+          },
+          {
+            "text": "Tell me",
+            "action": [
+              "v.player_response = 'Tell me';",
+              "q.dialogue.set_page('next_step')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "next_step",
+      "speaker": "captain_phyco",
+      "lines": [
+        "To embark on your journey, I have a special task for you.",
+        "Venture forth into Ultra Space and discover all its unique biomes."
+      ],
+      "input": {
+        "type": "option",
+        "vertical": true,
+        "options": [
+          {
+            "text": "Sure",
+            "action": [
+              "v.player_response = 'Sure';",
+              "q.task.assign('venture_forth:discover_biomes');",
+              "q.dialogue.set_page('task_assigned')"
+            ]
+          },
+          {
+            "text": "Later",
+            "action": [
+              "v.player_response = 'Later';",
+              "q.dialogue.set_page('farewell')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "task_assigned",
+      "speaker": "captain_phyco",
+      "lines": [
+        "Excellent! Your mission is to explore and uncover the secrets of each Ultra Space biome.",
+        "Return once you've discovered them all."
+      ],
+      "input": {
+        "type": "option",
+        "vertical": true,
+        "options": [
+          {
+            "text": "Understood",
+            "action": [
+              "v.player_response = 'Understood';",
+              "q.dialogue.set_page('farewell')",
+              "q.run_command('journey starttask journey:introduction')"
+            ]
+          },
+          {
+            "text": "Thanks",
+            "action": [
+              "v.player_response = 'Thanks';",
+              "q.dialogue.set_page('farewell')",
+              "q.run_command('journey starttask journey:introduction')"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "farewell",
+      "speaker": "captain_phyco",
+      "lines": [
+        {
+          "type": "expression",
+          "expression": "'Good luck, ' + q.player.username + '! May your adventures be grand in Ultra Megalopolis.'"
+        },
+        "Feel free to reach out if you need assistance."
+      ],
+      "input": "q.dialogue.close();"
+    }
+  ]
+}

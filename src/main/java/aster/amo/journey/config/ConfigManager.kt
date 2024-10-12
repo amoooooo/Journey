@@ -4,9 +4,11 @@ import com.cobblemon.mod.common.util.asResource
 import com.google.gson.stream.JsonReader
 import net.minecraft.resources.ResourceLocation
 import aster.amo.journey.Journey
+import aster.amo.journey.config.zones.ZoneConfig
 import aster.amo.journey.task.Task
 import aster.amo.journey.task.TaskRegistry
 import aster.amo.journey.utils.Utils
+import aster.amo.journey.zones.Zone
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
@@ -19,6 +21,7 @@ object ConfigManager {
     private var assetPackage = "assets/${Journey.MOD_ID}"
 
     lateinit var CONFIG: aster.amo.journey.config.JourneyConfig
+    lateinit var ZONE_CONFIG: ZoneConfig
 
     fun load() {
         // Load defaulted configs if they do not exist
@@ -26,6 +29,10 @@ object ConfigManager {
 
         // Load all files
         CONFIG = loadFile("config.json", aster.amo.journey.config.JourneyConfig())
+        ZONE_CONFIG = loadFile("zones.json", ZoneConfig()).also { it ->
+            val zoneDir = File(Journey.INSTANCE.configDir, "zones")
+            it.zones.addAll(loadZoneConfigs(zoneDir))
+        }
         TaskRegistry.clear()
         loadTasks(File(Journey.INSTANCE.configDir, "tasks")).forEach { (rl, task) -> TaskRegistry.registerTask(rl, task) }
     }
@@ -56,6 +63,31 @@ object ConfigManager {
             }
         }
         return tasks
+    }
+
+    fun loadZoneConfigs(directory: File): MutableList<Zone> {
+        val zones = mutableListOf<Zone>()
+        if (directory.exists() && directory.isDirectory) {
+            loadConfigsRecursive<Zone>(directory, zones) { file ->
+                try {
+                    var path = file.toPath()
+                    // remove Islander.INSTANCE.configDir from the path
+                    path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
+                    val zone = loadFile(path.toString(), Zone())
+                    zone.also { zone ->
+                        zone.areas.forEach { area ->
+                            area.functions.forEach {
+                                it.function(area)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Journey.LOGGER.error("Error loading zone config from ${file.absolutePath}", e)
+                    Zone()
+                }
+            }
+        }
+        return zones
     }
 
     private fun <T> loadConfigsRecursive(directory: File, list: MutableList<T>, loadAction: (File) -> T) {

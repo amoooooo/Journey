@@ -2,6 +2,9 @@ package aster.amo.journey.task.event
 
 import aster.amo.ceremony.utils.extension.get
 import aster.amo.journey.data.JourneyDataObject
+import aster.amo.journey.event.EnterZoneAreaEvent
+import aster.amo.journey.event.EnterZoneEvent
+import aster.amo.journey.event.ExitZoneEvent
 import aster.amo.journey.utils.MolangUtils
 import aster.amo.journey.utils.registryName
 import com.bedrockk.molang.runtime.MoLangRuntime
@@ -22,6 +25,99 @@ import xyz.nucleoid.stimuli.event.entity.EntityUseEvent
 import xyz.nucleoid.stimuli.event.item.ItemPickupEvent
 
 object JourneyEvents {
+
+    val ENTER_ZONE = JourneyEvent("ENTER_ZONE") {
+        Stimuli.global()
+            .listen(EnterZoneEvent.EVENT, EnterZoneEvent { zone, player ->
+                val data = player get JourneyDataObject
+                val activeSubtasks = data.getActiveSubtasks("ENTER_ZONE")
+                activeSubtasks.forEach { (taskId, subtask, progress) ->
+                    val runtime = createMolangRuntime()
+                    val queryStruct = runtime.environment.getStruct("query") as QueryStruct
+                    
+                    queryStruct.addFunctions(
+                        mapOf(
+                            "zone" to java.util.function.Function { params ->
+                                return@Function zone.toStruct()
+                            }
+                        )
+                    )
+                    val filterExpression = subtask.getOrParseFilterExpression()
+                    val result = runtime.resolveBoolean(filterExpression)
+                    if (result) {
+                        progress.progress += 1.0
+                        if (progress.progress >= subtask.target) {
+                            subtask.rewards.ifNotEmpty { it.forEach { it.parse(player) } }
+                            data.activeSubtasksByEvent[subtask.event.name]?.remove(progress)
+                            data.checkAndCompleteTask(taskId, subtask, progress)
+                        }
+                    }
+                }
+            })
+    }
+
+    val LEAVE_ZONE = JourneyEvent("LEAVE_ZONE") {
+        Stimuli.global()
+            .listen(ExitZoneEvent.EVENT, ExitZoneEvent { zone, player ->
+                val data = player get JourneyDataObject
+                val activeSubtasks = data.getActiveSubtasks("LEAVE_ZONE")
+                activeSubtasks.forEach { (taskId, subtask, progress) ->
+                    val runtime = createMolangRuntime()
+                    val queryStruct = runtime.environment.getStruct("query") as QueryStruct
+                    
+                    queryStruct.addFunctions(
+                        mapOf(
+                            "zone" to java.util.function.Function { params ->
+                                return@Function zone.toStruct()
+                            }
+                        )
+                    )
+                    val filterExpression = subtask.getOrParseFilterExpression()
+                    val result = runtime.resolveBoolean(filterExpression)
+                    if (result) {
+                        progress.progress += 1.0
+                        if (progress.progress >= subtask.target) {
+                            subtask.rewards.ifNotEmpty { it.forEach { it.parse(player) } }
+                            data.activeSubtasksByEvent[subtask.event.name]?.remove(progress)
+                            data.checkAndCompleteTask(taskId, subtask, progress)
+                        }
+                    }
+                }
+            })
+    }
+
+    val ENTER_ZONE_AREA = JourneyEvent("ENTER_ZONE_AREA") {
+        Stimuli.global()
+            .listen(EnterZoneAreaEvent.EVENT, EnterZoneAreaEvent { zone, area, player ->
+                val data = player get JourneyDataObject
+                val activeSubtasks = data.getActiveSubtasks("ENTER_ZONE_AREA")
+                activeSubtasks.forEach { (taskId, subtask, progress) ->
+                    val runtime = createMolangRuntime()
+                    val queryStruct = runtime.environment.getStruct("query") as QueryStruct
+                    
+                    queryStruct.addFunctions(
+                        mapOf(
+                            "zone" to java.util.function.Function { params ->
+                                return@Function zone.toStruct()
+                            },
+                            "area" to java.util.function.Function { params ->
+                                return@Function area.toStruct()
+                            }
+                        )
+                    )
+                    val filterExpression = subtask.getOrParseFilterExpression()
+                    val result = runtime.resolveBoolean(filterExpression)
+                    if (result) {
+                        progress.progress += 1.0
+                        if (progress.progress >= subtask.target) {
+                            subtask.rewards.ifNotEmpty { it.forEach { it.parse(player) } }
+                            data.activeSubtasksByEvent[subtask.event.name]?.remove(progress)
+                            data.checkAndCompleteTask(taskId, subtask, progress)
+                        }
+                    }
+                }
+            })
+    }
 
     val ENTITY_INTERACT = JourneyEvent("ENTITY_INTERACT") {
         Stimuli.global()
@@ -86,7 +182,7 @@ object JourneyEvents {
                     activeSubtasks.forEach { (taskId, subtask, progress) ->
                         val runtime = createMolangRuntime()
                         val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                        MolangUtils.setupPlayerStructs(queryStruct, player)
+                        
 
                         // Add 'battle' function to 'query' struct
                         queryStruct.addFunctions(
@@ -181,7 +277,7 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                MolangUtils.setupPlayerStructs(queryStruct, player)
+                
 
                 // Add 'battle' function to 'query' struct
                 queryStruct.addFunctions(
@@ -284,7 +380,7 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                MolangUtils.setupPlayerStructs(queryStruct, player)
+                
 
                 // Add 'pokemon' function to 'query' struct
                 queryStruct.addFunctions(
@@ -336,7 +432,7 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                MolangUtils.setupPlayerStructs(queryStruct, player)
+                
 
                 // Add 'pokemon' function to 'query' struct
                 queryStruct.addFunctions(
@@ -388,7 +484,7 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                MolangUtils.setupPlayerStructs(queryStruct, player)
+                
 
                 // Add 'pokemon' function to 'query' struct
                 queryStruct.addFunctions(

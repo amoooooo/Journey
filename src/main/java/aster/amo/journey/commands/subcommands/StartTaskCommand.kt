@@ -9,7 +9,7 @@ import aster.amo.journey.utils.inform
 import aster.amo.journey.utils.parseToNative
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.tree.LiteralCommandNode
-import me.lucko.fabric.api.permissions.v0.Permissions
+
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
@@ -22,7 +22,6 @@ import net.minecraft.commands.arguments.ResourceLocationArgument.id as resourceL
 class StartTaskCommand : SubCommand {
     override fun build(): LiteralCommandNode<CommandSourceStack> {
         return Commands.literal("starttask")
-            .requires(Permissions.require("${Journey.MOD_ID}.command.starttask", 2))
             .then(
                 Commands.argument("player", gameProfile())
                     .then(
