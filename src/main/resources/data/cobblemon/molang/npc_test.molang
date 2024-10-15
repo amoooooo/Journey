@@ -1,3 +1,1 @@
-if(q.player.has_completed_task('journey:introduction') != 0) {
-    c.npc.run_dialogue(c.player, 'space_cadet'
-}
+q.npc.distance_to_player(q.player.uuid) <= 16.0 ? { q.npc.snowstorm_particle('cobblemon:poke_marker', 0, 2, 0) }

@@ -40,7 +40,7 @@ public class ConditionallyScrollableSidebar extends Sidebar {
     public List<SidebarLine> getLinesFor(ServerGamePacketListenerImpl handler) {
         this.sortIfDirty();
         if (!this.condition.test(handler)) {
-            return elements;
+            return this.elements.subList(0, Math.min(14, this.elements.size()));
         } else {
             long pos = this.position.getLong(handler);
             ++pos;

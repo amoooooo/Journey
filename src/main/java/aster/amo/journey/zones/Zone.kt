@@ -12,7 +12,15 @@ import aster.amo.journey.zones.area.ZoneArea
 import aster.amo.journey.event.EnterZoneEvent
 import aster.amo.journey.event.ExitZoneEvent
 import aster.amo.journey.event.InsideZoneEvent
+import aster.amo.journey.utils.MolangUtils
+import com.bedrockk.molang.runtime.MoLangRuntime
 import com.bedrockk.molang.runtime.value.StringValue
+import com.cobblemon.mod.common.api.molang.ExpressionLike
+import com.cobblemon.mod.common.api.molang.MoLangFunctions.addFunctions
+import com.cobblemon.mod.common.api.molang.MoLangFunctions.setup
+import com.cobblemon.mod.common.api.scripting.CobblemonScripts
+import com.cobblemon.mod.common.util.asResource
+import com.cobblemon.mod.common.util.resolve
 import xyz.nucleoid.stimuli.Stimuli
 import java.util.*
 
@@ -22,8 +30,15 @@ class Zone(
     @SerializedName("areas") val areas: MutableList<ZoneArea> = mutableListOf(),
     @SerializedName("color") val color: Color = Color.random(),
     @SerializedName("entryMessage") val entryMessage: ConfigTitle = ConfigTitle(),
-    @SerializedName("exitMessage") val exitMessage: ConfigTitle = ConfigTitle()
+    @SerializedName("exitMessage") val exitMessage: ConfigTitle = ConfigTitle(),
+    @SerializedName("entry_script") val entryScript: String = "",
+    @SerializedName("exit_script") val exitScript: String = "",
+    @SerializedName("inside_script") val insideScript: String = ""
 ) {
+    private fun compiledEntryScript(): ExpressionLike? = CobblemonScripts.scripts[entryScript.asResource()]
+    private fun compiledExitScript(): ExpressionLike? = CobblemonScripts.scripts[exitScript.asResource()]
+    private fun compiledInsideScript(): ExpressionLike? = CobblemonScripts.scripts[insideScript.asResource()]
+
     @Transient
     val playersInside = mutableListOf<UUID>()
 
@@ -82,6 +97,16 @@ class Zone(
             entryMessage.type.run(player, entryMessage)
         }
         Stimuli.select().forEntity(player).get(EnterZoneEvent.EVENT).onEnterZone(this, player)
+        val runtime = MoLangRuntime().setup()
+        MolangUtils.setupPlayerStructs(runtime.environment.query, player)
+        runtime.environment.query.addFunctions(
+            mapOf(
+                "zone" to java.util.function.Function { params ->
+                    return@Function toStruct()
+                }
+            )
+        )
+        compiledEntryScript()?.let { runtime.resolve(it) }
     }
 
     fun onPlayerLeave(player: ServerPlayer) {
@@ -89,10 +114,30 @@ class Zone(
             exitMessage.type.run(player, exitMessage)
         }
         Stimuli.select().forEntity(player).get(ExitZoneEvent.EVENT).onExitZone(this, player)
+        val runtime = MoLangRuntime().setup()
+        MolangUtils.setupPlayerStructs(runtime.environment.query, player)
+        runtime.environment.query.addFunctions(
+            mapOf(
+                "zone" to java.util.function.Function { params ->
+                    return@Function toStruct()
+                }
+            )
+        )
+        compiledExitScript()?.let { runtime.resolve(it) }
     }
 
     fun onPlayerInside(player: ServerPlayer) {
         Stimuli.select().forEntity(player).get(InsideZoneEvent.EVENT).onInsideZone(this, player)
+        val runtime = MoLangRuntime().setup()
+        MolangUtils.setupPlayerStructs(runtime.environment.query, player)
+        runtime.environment.query.addFunctions(
+            mapOf(
+                "zone" to java.util.function.Function { params ->
+                    return@Function toStruct()
+                }
+            )
+        )
+        compiledInsideScript()?.let { runtime.resolve(it) }
     }
 
     fun toStruct(): QueryStruct {

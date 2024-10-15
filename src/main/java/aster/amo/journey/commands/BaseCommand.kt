@@ -24,7 +24,10 @@ class BaseCommand {
             RemoveTaskCommand().build(),
             TrackTaskCommand().build(),
             RemoveCompletedTaskCommand().build(),
-            ZoneCommand().build()
+            ZoneCommand().build(),
+            FlagCommand().build(),
+            CompleteTaskCommand().build(),
+            CompleteSubtaskCommand().build()
         )
         rootCommands.forEach { root ->
             subCommands.forEach { sub -> root.addChild(sub) }
@@ -33,5 +36,6 @@ class BaseCommand {
 
         dispatcher.root.addChild(TrackTaskCommand().build())
         dispatcher.root.addChild(ZoneCommand().build())
+        dispatcher.root.addChild(FlagCommand().build())
     }
 }

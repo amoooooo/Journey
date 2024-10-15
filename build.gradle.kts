@@ -38,6 +38,13 @@ loom {
     }
 }
 
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
+}
+
 val modImplementationInclude by configurations.register("modImplementationInclude")
 
 configurations {

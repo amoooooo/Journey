@@ -25,6 +25,10 @@ class RewardTypeAdapterFactory : TypeAdapterFactory {
                         jsonObject.addProperty("type", "currency")
                         jsonObject.add("data", gson.toJsonTree(value))
                     }
+                    is ScriptReward -> {
+                        jsonObject.addProperty("type", "script")
+                        jsonObject.add("data", gson.toJsonTree(value))
+                    }
                     else -> throw JsonParseException("Unknown reward type: ${value!!::class.java.simpleName}")
                 }
                 elementAdapter.write(out, jsonObject)
@@ -47,6 +51,10 @@ class RewardTypeAdapterFactory : TypeAdapterFactory {
                     }
                     "currency" -> {
                         val delegate = gson.getDelegateAdapter(this@RewardTypeAdapterFactory, TypeToken.get(CurrencyReward::class.java))
+                        delegate.fromJsonTree(dataElement)
+                    }
+                    "script" -> {
+                        val delegate = gson.getDelegateAdapter(this@RewardTypeAdapterFactory, TypeToken.get(ScriptReward::class.java))
                         delegate.fromJsonTree(dataElement)
                     }
                     else -> throw JsonParseException("Unknown reward type: $type")

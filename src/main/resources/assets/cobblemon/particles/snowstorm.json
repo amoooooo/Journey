@@ -1,0 +1,16 @@
+{
+  "textures": [
+    "cobblemon:dialogue_dots",
+    "cobblemon:dialogue_exclamation",
+    "cobblemon:dialogue_question",
+    "cobblemon:idle_dots_unspoken",
+    "cobblemon:idle_dots_spoken",
+    "cobblemon:marker",
+    "cobblemon:poke_marker",
+    "cobblemon:quest_completed_question",
+    "cobblemon:quest_ready_exclamation",
+    "cobblemon:quest_not_completed_question",
+    "cobblemon:white_orb",
+    "cobblemon:white_sparkle"
+  ]
+}

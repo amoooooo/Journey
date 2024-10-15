@@ -12,6 +12,11 @@ class JourneyConfig(
     @SerializedName("subtask_description_max_length") var subtaskDescriptionMaxLength: Int = 48,
     @SerializedName("max_tasks_shown") var maxTasksShown: Int = 2,
     @SerializedName("show_description_in_sidebar") var showDescriptionInSidebar: Boolean = false,
+    @SerializedName("daily_reset_time") var dailyResetTime: String = "00:00",
+    @SerializedName("weekly_reset_day") var weeklyResetDay: String = "Monday",
+    @SerializedName("monthly_reset_day") var monthlyResetDay: Int = 1,
+    @SerializedName("reset_time_zone") var resetTimeZone: String = "UTC",
+    @SerializedName("yearly_reset_date") var yearlyResetDate: String = "01-01",
 ) {
 
     override fun toString(): String {

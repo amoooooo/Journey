@@ -26,6 +26,7 @@ class SubtaskTypeAdapter : JsonSerializer<Subtask>, JsonDeserializer<Subtask> {
             locObj.addProperty("z", it.z)
             jsonObject.add("location", locObj)
         }
+        jsonObject.addProperty("script", src.script)
         return jsonObject
     }
 
@@ -47,6 +48,7 @@ class SubtaskTypeAdapter : JsonSerializer<Subtask>, JsonDeserializer<Subtask> {
             val z = it.get("z")?.asInt ?: 0
             Vector3i(x, y, z)
         }
+        val script = jsonObject.get("script")?.asString ?: ""
 
         return Subtask(
             id = id,
@@ -57,7 +59,8 @@ class SubtaskTypeAdapter : JsonSerializer<Subtask>, JsonDeserializer<Subtask> {
             filter = filter,
             target = target,
             rewards = rewards,
-            location = location
+            location = location,
+            script = script
         )
     }
 }

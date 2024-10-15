@@ -5,8 +5,11 @@ import com.google.gson.stream.JsonReader
 import net.minecraft.resources.ResourceLocation
 import aster.amo.journey.Journey
 import aster.amo.journey.config.zones.ZoneConfig
+import aster.amo.journey.flag.FilteredEntity
+import aster.amo.journey.flag.PerPlayerStructure
 import aster.amo.journey.task.Task
 import aster.amo.journey.task.TaskRegistry
+import aster.amo.journey.task.TaskSource
 import aster.amo.journey.utils.Utils
 import aster.amo.journey.zones.Zone
 import java.io.File
@@ -35,6 +38,12 @@ object ConfigManager {
         }
         TaskRegistry.clear()
         loadTasks(File(Journey.INSTANCE.configDir, "tasks")).forEach { (rl, task) -> TaskRegistry.registerTask(rl, task) }
+        TaskSource.clear()
+        loadSources(File(Journey.INSTANCE.configDir, "sources")).forEach { (rl, source) -> TaskSource.registerSource(rl, source) }
+        PerPlayerStructure.structures.clear()
+        loadPerPlayerStructures(File(Journey.INSTANCE.configDir, "per_player_structures")).forEach { (rl, structure) -> PerPlayerStructure.structures.add(structure) }
+        FilteredEntity.filters.clear()
+        loadFilteredEntities(File(Journey.INSTANCE.configDir, "filtered_entities")).forEach { filter -> FilteredEntity.filters.add(filter) }
     }
 
     private fun copyDefaults() {
@@ -65,6 +74,44 @@ object ConfigManager {
         return tasks
     }
 
+    fun loadSources(directory: File): MutableMap<ResourceLocation, TaskSource> {
+        val tasks = mutableMapOf<ResourceLocation, TaskSource>()
+        if (directory.exists() && directory.isDirectory) {
+            loadConfigsRecursive(directory, tasks) { file ->
+                val taskName = "journey:"+file.nameWithoutExtension
+                try {
+                    var path = file.toPath()
+                    path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
+                    val taskSource = loadFile(path.toString(), TaskSource())
+                    Pair(taskName.asResource(), taskSource)
+                } catch (e: Exception) {
+                    Journey.LOGGER.error("Error loading task config from ${file.absolutePath}", e)
+                    Pair(taskName.asResource(), TaskSource())
+                }
+            }
+        }
+        return tasks
+    }
+
+    fun loadPerPlayerStructures(directory: File): MutableMap<ResourceLocation, PerPlayerStructure> {
+        val structures = mutableMapOf<ResourceLocation, PerPlayerStructure>()
+        if (directory.exists() && directory.isDirectory) {
+            loadConfigsRecursive(directory, structures) { file ->
+                val structureName = "journey:"+file.nameWithoutExtension
+                try {
+                    var path = file.toPath()
+                    path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
+                    val structure = loadFile(path.toString(), PerPlayerStructure())
+                    Pair(structureName.asResource(), structure)
+                } catch (e: Exception) {
+                    Journey.LOGGER.error("Error loading task config from ${file.absolutePath}", e)
+                    Pair(structureName.asResource(), PerPlayerStructure())
+                }
+            }
+        }
+        return structures
+    }
+
     fun loadZoneConfigs(directory: File): MutableList<Zone> {
         val zones = mutableListOf<Zone>()
         if (directory.exists() && directory.isDirectory) {
@@ -88,6 +135,24 @@ object ConfigManager {
             }
         }
         return zones
+    }
+
+    fun loadFilteredEntities(directory: File): MutableList<FilteredEntity> {
+        val filters = mutableListOf<FilteredEntity>()
+        if (directory.exists() && directory.isDirectory) {
+            loadConfigsRecursive<FilteredEntity>(directory, filters) { file ->
+                try {
+                    var path = file.toPath()
+                    path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
+                    val filter = loadFile(path.toString(), FilteredEntity())
+                    filter
+                } catch (e: Exception) {
+                    Journey.LOGGER.error("Error loading zone config from ${file.absolutePath}", e)
+                    FilteredEntity()
+                }
+            }
+        }
+        return filters
     }
 
     private fun <T> loadConfigsRecursive(directory: File, list: MutableList<T>, loadAction: (File) -> T) {

@@ -1,4 +1,7 @@
 {
+  "initializatonAction": [
+    "v.landing_page = c.player.has_completed_task('journey:evolve_starter') ? 'what_is_ultra' : 'intro';"
+  ],
   "escapeAction": "q.dialogue.set_page('farewell')",
   "speakers": {
     "space_cadet": {
@@ -91,14 +94,16 @@
             "text": "Got it",
             "action": [
               "v.player_response = 'Got it';",
-              "q.dialogue.set_page('farewell')"
+              "q.dialogue.set_page('farewell')",
+              "q.run_command('journey starttask ' + q.player.username + ' journey:exploration')"
             ]
           },
           {
             "text": "Thanks",
             "action": [
               "v.player_response = 'Thanks';",
-              "q.dialogue.set_page('farewell')"
+              "q.dialogue.set_page('farewell')",
+              "q.run_command('journey starttask ' + q.player.username + ' journey:exploration')"
             ]
           }
         ]

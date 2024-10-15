@@ -22,7 +22,8 @@ class Subtask(
     val filter: String = "",
     val target: Double = 1.0,
     val rewards: List<Reward> = emptyList(),
-    val location: Vector3i? = null
+    val location: Vector3i? = null,
+    val script: String = ""
 ) {
     fun complete(player: ServerPlayer) {
         rewards.forEach { it.parse(player) }

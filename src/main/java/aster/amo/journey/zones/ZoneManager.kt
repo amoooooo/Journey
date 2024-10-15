@@ -16,12 +16,23 @@ class ZoneManager(
 ) {
 
     fun init() {
-        ConfigManager.ZONE_CONFIG.zones.forEach { zones.add(it) }
-        zones.subscribe {
-            ConfigManager.ZONE_CONFIG.zones.clear()
-            ConfigManager.ZONE_CONFIG.zones.addAll(zones)
-            ConfigManager.saveFile("zones.json", ConfigManager.ZONE_CONFIG)
+        val initialZones = ConfigManager.ZONE_CONFIG.zones.toList()
+        initialZones.forEach { zone ->
+            zones.add(zone)
         }
+
+        zones.subscribe {
+            updateZoneConfig()
+        }
+    }
+
+    /**
+     * Updates the ConfigManager.ZONE_CONFIG.zones with the current zones.
+     * This function ensures that the update is done safely without causing concurrent modifications.
+     */
+    private fun updateZoneConfig() {
+        ConfigManager.ZONE_CONFIG.zones.clear()
+        ConfigManager.ZONE_CONFIG.zones.addAll(zones)
     }
 
     fun addZone(zone: Zone) {

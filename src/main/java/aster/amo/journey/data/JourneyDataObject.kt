@@ -5,9 +5,11 @@ import aster.amo.ceremony.data.DataObjectKey
 import aster.amo.ceremony.data.PlayerData
 import aster.amo.journey.Journey
 import aster.amo.journey.config.ConfigManager
+import aster.amo.journey.task.RepeatType
 import aster.amo.journey.task.Subtask
 import aster.amo.journey.task.Task
 import aster.amo.journey.task.TaskRegistry
+import aster.amo.journey.utils.ConditionallyScrollableSidebar
 import aster.amo.journey.utils.inform
 import aster.amo.journey.utils.moveToTop
 import aster.amo.journey.utils.parseToNative
@@ -21,8 +23,11 @@ import eu.pb4.sidebars.api.SidebarUtils
 import eu.pb4.sidebars.api.lines.LineBuilder
 import eu.pb4.sidebars.api.lines.SidebarLine
 import eu.pb4.sidebars.api.lines.SuppliedSidebarLine
+import kotlinx.datetime.*
+import kotlinx.datetime.TimeZone
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.StringTag
 import net.minecraft.network.chat.numbers.BlankFormat
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
@@ -32,20 +37,23 @@ import net.minecraft.world.entity.animal.Pig
 import net.minecraft.world.entity.animal.allay.Allay
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.phys.Vec3
-import java.util.LinkedHashMap
-import java.util.UUID
+import java.time.MonthDay
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.temporal.TemporalField
+import java.util.*
 import kotlin.math.absoluteValue
 
 class JourneyDataObject(player: Player) : DataObject(player) {
-    var showZoneBounds: Boolean = false
-    var starterPokemon: UUID? = null
-
     val tasksProgress: LinkedHashMap<ResourceLocation, TaskProgress> = linkedMapOf()
-
     val activeSubtasksByEvent: LinkedHashMap<String, MutableList<SubtaskProgress>> = linkedMapOf()
-    var sidebar: SidebarInterface? = null
     val completedQuests: MutableMap<ResourceLocation, TaskProgress> = mutableMapOf()
+    var flags: MutableList<String> = mutableListOf()
+
+    var sidebar: SidebarInterface? = null
     var trackedTaskId: ResourceLocation? = null
+    var starterPokemon: UUID? = null
+    var showZoneBounds: Boolean = false
 
     override fun readFromNbt(tag: CompoundTag) {
         tasksProgress.clear()
@@ -67,6 +75,12 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         }
         trackedTaskId = tag.getString("trackedTaskId").asResource()
         showZoneBounds = tag.getBoolean("showZoneBounds")
+        flags.clear()
+        val flagsListTag = tag.getList("flags", 8) // 8 = StringTag
+        flagsListTag.forEach { element ->
+            flags.add((element as StringTag).asString)
+        }
+        flags = flags.distinct().toMutableList()
         rebuildActiveSubtasksIndex()
     }
 
@@ -84,6 +98,9 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         tag.put("completedQuests", completedQuestsListTag)
         tag.putString("trackedTaskId", trackedTaskId?.toString() ?: "")
         tag.putBoolean("showZoneBounds", showZoneBounds)
+        val flagsListTag = ListTag()
+        flags.forEach { flagsListTag.add(StringTag.valueOf(it)) }
+        tag.put("flags", flagsListTag)
     }
 
     private fun rebuildActiveSubtasksIndex() {
@@ -119,21 +136,14 @@ class JourneyDataObject(player: Player) : DataObject(player) {
                         val nextSubtaskProgress = SubtaskProgress(taskId, nextSubtask.id)
                         taskProgress.subtasksProgress[nextSubtask.id] = nextSubtaskProgress
                         taskProgress.currentSubtaskId = nextSubtask.id
-                        activeSubtasksByEvent.computeIfAbsent(nextSubtask.event.name) { mutableListOf() }
-                            .add(nextSubtaskProgress)
+                        activeSubtasksByEvent.computeIfAbsent(nextSubtask.event.name) { mutableListOf() }.add(nextSubtaskProgress)
 
                     } else {
-                        tasksProgress.remove(taskId)
-                        task.rewards.forEach { it.parse(player as ServerPlayer) }
-                        completedQuests.getOrPut(taskId) { taskProgress }
-                        player as ServerPlayer inform "<green>Task ".parseToNative().append(task.name.parseToNative()).append("<green> is complete!".parseToNative())
+                        completeTask(taskId, task, taskProgress)
                     }
                 } else {
                     if (taskProgress.subtasksProgress.isEmpty()) {
-                        tasksProgress.remove(taskId)
-                        task.rewards.forEach { it.parse(player as ServerPlayer) }
-                        completedQuests.getOrPut(taskId) { taskProgress }
-                        player as ServerPlayer inform "<green>Task ".parseToNative().append(task.name.parseToNative()).append("<green> is complete!".parseToNative())
+                        completeTask(taskId, task, taskProgress)
                     }
                 }
 
@@ -144,6 +154,111 @@ class JourneyDataObject(player: Player) : DataObject(player) {
                 }
             }
         }
+    }
+
+    private fun completeTask(
+        taskId: ResourceLocation,
+        task: Task,
+        taskProgress: TaskProgress
+    ) {
+        tasksProgress.remove(taskId)
+        task.rewards.forEach { it.parse(player as ServerPlayer) }
+        completedQuests.getOrPut(taskId) {
+            taskProgress.also {
+                it.completedTime = System.currentTimeMillis()
+                val repeatType = task.repeatType
+                val repeatInterval = task.repeatInterval
+                val completedTime = taskProgress.completedTime
+
+                taskProgress.whenToReset = when (repeatType) {
+                    RepeatType.HOURLY -> {
+                        val oneHourInMillis = 3600000
+                        val hours = oneHourInMillis * repeatInterval
+                        completedTime + hours
+                    }
+                    RepeatType.DAILY -> {
+                        val resetTimeString = ConfigManager.CONFIG.dailyResetTime
+                        val resetLocalTime = resetTimeString.toLocalTime() ?: return
+                        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+
+                        var resetDateTime = LocalDateTime(now.year, now.monthNumber, now.dayOfMonth, resetLocalTime.hour, resetLocalTime.minute)
+
+                        if (now >= resetDateTime) {
+                            resetDateTime = resetDateTime.plusDaysUsingInstant(1)
+                        }
+
+                        val diff = resetDateTime.toInstant(TimeZone.UTC).toEpochMilliseconds() - now.toInstant(TimeZone.UTC).toEpochMilliseconds()
+                        completedTime + diff
+                    }
+
+                    RepeatType.WEEKLY -> {
+                        val resetDayString = ConfigManager.CONFIG.weeklyResetDay
+                        val resetTimeString = ConfigManager.CONFIG.dailyResetTime
+
+                        val resetDay = resetDayString.toDayOfWeek() ?: return
+                        val resetLocalTime = resetTimeString.toLocalTime() ?: return
+                        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+
+                        var daysUntilReset = (resetDay.value - now.dayOfWeek.value + 7) % 7
+                        if (daysUntilReset == 0 && now.time >= resetLocalTime) {
+                            daysUntilReset = 7
+                        }
+
+                        val resetDateTime = now.plusDaysUsingInstant(daysUntilReset).date.atTime(resetLocalTime)
+
+                        val diff = resetDateTime.toInstant(TimeZone.UTC).toEpochMilliseconds() - now.toInstant(TimeZone.UTC).toEpochMilliseconds()
+                        completedTime + diff
+                    }
+
+                    RepeatType.MONTHLY -> {
+                        val resetDate = ConfigManager.CONFIG.monthlyResetDay
+                        val resetTimeString = ConfigManager.CONFIG.dailyResetTime
+
+                        val resetLocalTime = resetTimeString.toLocalTime()
+                        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+
+                        var resetYear = now.year
+                        var resetMonth = now.monthNumber
+
+                        if (now.dayOfMonth >= resetDate) {
+                            resetMonth += 1
+                            if (resetMonth > 12) {
+                                resetMonth = 1
+                                resetYear += 1
+                            }
+                        }
+                        val safeResetDate = resetDate.coerceIn(1, Month(resetMonth).length(false))
+                        val resetDateTime = LocalDateTime(resetYear, resetMonth, safeResetDate, resetLocalTime.hour, resetLocalTime.minute)
+                        val diff = resetDateTime.toInstant(TimeZone.UTC).toEpochMilliseconds() - now.toInstant(TimeZone.UTC).toEpochMilliseconds()
+                        completedTime + diff
+                    }
+
+                    RepeatType.YEARLY -> {
+                        val resetDateString = ConfigManager.CONFIG.yearlyResetDate
+                        val resetTimeString = ConfigManager.CONFIG.dailyResetTime
+
+                        val resetMonthDay = resetDateString.toMonthDay() ?: return
+                        val resetLocalTime = resetTimeString.toLocalTime() ?: return
+                        val now = Clock.System.now().toLocalDateTime(TimeZone.UTC)
+
+                        var resetYear = now.year
+                        if (now.monthNumber > resetMonthDay.month.number || (now.monthNumber == resetMonthDay.month.number && now.dayOfMonth >= resetMonthDay.dayOfMonth)) {
+                            resetYear += 1
+                        }
+                        val resetDateTime = LocalDateTime(resetYear, resetMonthDay.month, resetMonthDay.dayOfMonth, resetLocalTime.hour, resetLocalTime.minute)
+                        val diff = resetDateTime.toInstant(TimeZone.UTC).toEpochMilliseconds() - now.toInstant(TimeZone.UTC).toEpochMilliseconds()
+                        completedTime + diff
+                    }
+
+                    RepeatType.NONE -> {
+                        -1L
+                    }
+                }
+
+            }
+        }
+        player as ServerPlayer inform "<green>Task ".parseToNative().append(task.name.parseToNative())
+            .append("<green> is complete!".parseToNative())
     }
 
     fun addTask(task: Task) {
@@ -186,11 +301,9 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         if (sidebar != null) {
             SidebarUtils.removeSidebar((player as ServerPlayer).connection, sidebar)
         }
-        val taskSidebar: Sidebar =
-            if(player.isShiftKeyDown)
-                ScrollableSidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM, 20)
-            else
-                Sidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM)
+        val taskSidebar: Sidebar = ConditionallyScrollableSidebar(ConfigManager.CONFIG.questSidebarTitle.parseToNative(), Sidebar.Priority.MEDIUM, 20) { impl ->
+            impl.player.isShiftKeyDown
+        }
         taskSidebar.set { builder ->
             addTaskLines(builder)
         }
@@ -207,7 +320,7 @@ class JourneyDataObject(player: Player) : DataObject(player) {
         var index = 0
         for (taskID in tasksProgress.values) {
             index++
-            if(index >= ConfigManager.CONFIG.maxTasksShown) {
+            if(index > ConfigManager.CONFIG.maxTasksShown) {
                 break
             }
             val task = TaskRegistry.TASKS[taskID.taskId]
@@ -376,4 +489,29 @@ class JourneyDataObject(player: Player) : DataObject(player) {
             }
         }
     }
+}
+
+fun String.toDayOfWeek(): DayOfWeek? {
+    return try {
+        DayOfWeek.valueOf(this.uppercase(Locale.ENGLISH))
+    } catch (e: IllegalArgumentException) {
+        e.printStackTrace()
+        null
+    }
+}
+fun String.toMonthDay(): MonthDay? {
+    return try {
+        val formatter = DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH)
+        val localDate = java.time.LocalDate.parse(this, formatter)
+        MonthDay.of(localDate.monthValue, localDate.dayOfMonth)
+    } catch (e: DateTimeParseException) {
+        e.printStackTrace()
+        null
+    }
+}
+
+fun LocalDateTime.plusDaysUsingInstant(days: Int): LocalDateTime {
+    val instant = this.toInstant(TimeZone.UTC)
+    val newInstant = instant.plus(days, DateTimeUnit.DAY, TimeZone.UTC)
+    return newInstant.toLocalDateTime(TimeZone.UTC)
 }

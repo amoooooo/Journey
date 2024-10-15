@@ -5,24 +5,29 @@ import aster.amo.ceremony.utils.extension.get
 import aster.amo.journey.commands.BaseCommand
 import aster.amo.journey.config.ConfigManager
 import aster.amo.journey.data.JourneyDataObject
-import aster.amo.journey.task.Subtask
-import aster.amo.journey.task.Task
-import aster.amo.journey.task.TaskRegistry
+import aster.amo.journey.flag.PerPlayerStructure
+import aster.amo.journey.task.*
 import aster.amo.journey.task.event.JourneyEvent
 import aster.amo.journey.task.event.JourneyEvents
 import aster.amo.journey.task.reward.RewardTypeAdapterFactory
 import aster.amo.journey.utils.JourneyMolang
-import aster.amo.journey.utils.adapter.JourneyEventDeserializer
-import aster.amo.journey.utils.adapter.TaskTypeAdapter
+import aster.amo.journey.utils.MolangUtils
+import aster.amo.journey.utils.StructureThread
 import aster.amo.journey.utils.Utils
-import aster.amo.journey.utils.adapter.SubtaskTypeAdapter
-import aster.amo.journey.utils.adapter.ZoneAreaTypeAdapter
+import aster.amo.journey.utils.adapter.*
 import aster.amo.journey.utils.pathfinding.PathfinderService
 import aster.amo.journey.zones.ZoneManager
 import aster.amo.journey.zones.area.ZoneArea
+import com.bedrockk.molang.MoLang
+import com.bedrockk.molang.runtime.MoLangEnvironment
+import com.bedrockk.molang.runtime.MoLangRuntime
 import com.cobblemon.mod.common.api.events.CobblemonEvents
 import com.cobblemon.mod.common.api.molang.ExpressionLike
+import com.cobblemon.mod.common.api.molang.MoLangFunctions
+import com.cobblemon.mod.common.api.molang.MoLangFunctions.setup
+import com.cobblemon.mod.common.api.scripting.CobblemonScripts
 import com.cobblemon.mod.common.util.adapters.ExpressionLikeAdapter
+import com.cobblemon.mod.common.util.asResource
 import com.cobblemon.mod.common.util.asUUID
 import com.cobblemon.mod.common.util.math.geometry.toRadians
 import com.github.shynixn.mccoroutine.fabric.launch
@@ -88,20 +93,27 @@ class Journey : ModInitializer {
         .registerTypeHierarchyAdapter(SoundEvent::class.java, Utils.RegistrySerializer(BuiltInRegistries.SOUND_EVENT))
         .registerTypeHierarchyAdapter(CompoundTag::class.java, Utils.CodecSerializer(CompoundTag.CODEC))
         .registerTypeAdapter(Subtask::class.java, SubtaskTypeAdapter())
+        .registerTypeAdapter(Vector3f::class.java, Vector3fTypeAdapter())
+        .registerTypeAdapter(TaskSource::class.java, TaskSourceTypeAdapter(Vector3fTypeAdapter()))
         .disableHtmlEscaping().create()
 
     var gsonPretty: Gson = gson.newBuilder().setPrettyPrinting().create()
+
+    val structureThread: StructureThread = StructureThread()
     override fun onInitialize() {
         INSTANCE = this
-
+        structureThread.launch()
         this.configDir = File(FabricLoader.getInstance().configDirectory, MOD_ID)
         ConfigManager.load()
         registerEvents()
         JourneyMolang.setupPlayerExtensions()
+        JourneyMolang.setupNPCExtensions()
     }
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun registerEvents() {
+        TaskSource.setup()
+        RepeatHandler.setupReset()
         ServerLifecycleEvents.SERVER_STARTING.register(ServerLifecycleEvents.ServerStarting { server: MinecraftServer? ->
             this.adventure = FabricServerAudiences.of(
                 server!!
@@ -119,81 +131,22 @@ class Journey : ModInitializer {
         }
         ServerTickEvents.START_SERVER_TICK.register { server ->
             zoneManager.onTick(server)
+            PerPlayerStructure.send(server)
             server.playerList.players.forEach { player ->
                 val data = player get JourneyDataObject
+                data.tasksProgress.keys.forEach { taskID ->
+                    val task = Task.TASKS[taskID] ?: return@forEach
+                    val taskScript = task.script
+                    if (taskScript.isNotEmpty()) {
+                        GlobalScope.launch(Dispatchers.IO) {
+                            val runtime = MoLangRuntime().setup()
+                            MolangUtils.setupPlayerStructs(runtime.environment.query, player)
+                            MolangUtils.setupWorldStructs(runtime.environment.query, player)
+                            CobblemonScripts.run(taskScript.asResource(), runtime)
+                        }
+                    }
+                }
                 data.rebuildSidebar()
-                data.getTrackedTask()?.let { task ->
-                    val subtask = task.currentSubtaskId?.let { TaskRegistry.getSubtask(task.taskId, it) } ?: return@let
-                    if (subtask.event == JourneyEvents.ENTITY_INTERACT) {
-                        if (!subtask.eventData.has("uuid")) return@let
-                        val uuid = subtask.eventData.get("uuid").toString().replace("\"", "")
-                        val entity = uuid.asUUID!!.let { (player.level() as ServerLevel).getEntity(it) } ?: return@let
-                        if (entity.distanceTo(player) < 32.0) {
-                            GlobalScope.launch(Dispatchers.Default) {
-                                val spline = MatrixSpline.spiralSpline(0.5, 2.0, 3, 64)
-                                for (i in 0..48) {
-                                    val rot = -(((player.level().gameTime * 2500) % 360)).toRadians()
-                                    val point = spline.interpolate(i.toDouble() / 48.0).yRot(rot).add(entity.position())
-                                    player.connection.send(
-                                        ClientboundLevelParticlesPacket(
-                                            DustParticleOptions(Vector3f(0.0f, 1.0f, 0.0f), 0.5f),
-                                            true,
-                                            point.x,
-                                            point.y,
-                                            point.z,
-                                            0.0f,
-                                            0.0f,
-                                            0.0f,
-                                            0.0f,
-                                            1
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                TaskRegistry.TASKS.entries.forEach { taskEntry ->
-                    if(!data.completedQuests.contains(taskEntry.key)) {
-                        val task = taskEntry.value
-                        if(task.starterNPC.isNotEmpty()) {
-                            val doesTrackedTaskContainEntity: Boolean = data.getTrackedTask()?.let { trackedTask ->
-                                val taskId = trackedTask.taskId
-                                val subtaskId = trackedTask.currentSubtaskId ?: return@let false
-                                val subtask = TaskRegistry.getSubtask(taskId, subtaskId) ?: return@let false
-                                val subtaskUuid = subtask.eventData["uuid"]?.asJsonPrimitive?.asString ?: return@let false
-                                subtask.event == JourneyEvents.ENTITY_INTERACT &&
-                                        subtaskUuid == task.starterNPC
-                            } ?: false
-                            if(task.canStart(player) && !doesTrackedTaskContainEntity) {
-                                val npc = (player.level() as ServerLevel).getEntity(task.starterNPC.asUUID!!) ?: return@forEach
-                                if(npc.distanceTo(player) < 32.0) {
-                                    GlobalScope.launch(Dispatchers.Default) {
-                                        val spline = MatrixSpline.spiralSpline(0.5, 0.5, 3, 64)
-                                        for (i in 0..48) {
-                                            val rot = -(((player.level().gameTime * 2500) % 360)).toRadians()
-                                            val point = spline.interpolate(i.toDouble() / 48.0).yRot(rot).add(npc.position()).add(0.0,2.0,0.0)
-                                            player.connection.send(
-                                                ClientboundLevelParticlesPacket(
-                                                    DustParticleOptions(Vector3f(1.0f, 1.0f, 0.0f), 0.5f),
-                                                    true,
-                                                    point.x,
-                                                    point.y,
-                                                    point.z,
-                                                    0.0f,
-                                                    0.0f,
-                                                    0.0f,
-                                                    0.0f,
-                                                    1
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
         CobblemonEvents.STARTER_CHOSEN.subscribe { event ->

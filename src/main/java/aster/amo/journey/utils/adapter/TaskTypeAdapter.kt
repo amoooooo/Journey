@@ -36,6 +36,7 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
             context.deserialize<Subtask>(it, Subtask::class.java)
         } ?: emptyList()
         val starterNPC = jsonObject.get("start_npc")?.asString ?: ""
+        val script = jsonObject.get("script")?.asString ?: ""
 
         return Task(
             name = name,
@@ -48,7 +49,8 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
             repeatInterval = repeatInterval,
             repeatLimit = repeatLimit,
             tasks = tasks.toCollection(ArrayDeque()),
-            starterNPC = starterNPC
+            starterNPC = starterNPC,
+            script = script
         )
     }
 
@@ -72,6 +74,7 @@ class TaskTypeAdapter : JsonDeserializer<Task>, JsonSerializer<Task> {
         src.tasks.forEach { tasksArray.add(context.serialize(it, Subtask::class.java)) }
         jsonObject.add("tasks", tasksArray)
         jsonObject.addProperty("start_npc", src.starterNPC)
+        jsonObject.addProperty("script", src.script)
 
         return jsonObject
     }

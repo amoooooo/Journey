@@ -6,6 +6,7 @@ import aster.amo.journey.event.EnterZoneAreaEvent
 import aster.amo.journey.event.EnterZoneEvent
 import aster.amo.journey.event.ExitZoneEvent
 import aster.amo.journey.utils.MolangUtils
+import aster.amo.journey.utils.asStruct
 import aster.amo.journey.utils.registryName
 import com.bedrockk.molang.runtime.MoLangRuntime
 import com.bedrockk.molang.runtime.struct.QueryStruct
@@ -15,8 +16,10 @@ import com.cobblemon.mod.common.api.battles.model.actor.ActorType
 import com.cobblemon.mod.common.api.events.CobblemonEvents
 import com.cobblemon.mod.common.api.molang.MoLangFunctions
 import com.cobblemon.mod.common.api.molang.MoLangFunctions.addFunctions
+import com.cobblemon.mod.common.api.molang.MoLangFunctions.asMoLangValue
 import com.cobblemon.mod.common.api.molang.MoLangFunctions.setup
 import com.cobblemon.mod.common.battles.actor.PlayerBattleActor
+import com.cobblemon.mod.common.entity.pokemon.PokemonEntity
 import com.cobblemon.mod.common.util.resolveBoolean
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
@@ -34,7 +37,8 @@ object JourneyEvents {
                 activeSubtasks.forEach { (taskId, subtask, progress) ->
                     val runtime = createMolangRuntime()
                     val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                    
+                    MolangUtils.setupPlayerStructs(queryStruct, player)
+
                     queryStruct.addFunctions(
                         mapOf(
                             "zone" to java.util.function.Function { params ->
@@ -64,7 +68,7 @@ object JourneyEvents {
                 activeSubtasks.forEach { (taskId, subtask, progress) ->
                     val runtime = createMolangRuntime()
                     val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                    
+                    MolangUtils.setupPlayerStructs(queryStruct, player)
                     queryStruct.addFunctions(
                         mapOf(
                             "zone" to java.util.function.Function { params ->
@@ -94,7 +98,8 @@ object JourneyEvents {
                 activeSubtasks.forEach { (taskId, subtask, progress) ->
                     val runtime = createMolangRuntime()
                     val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                    
+                    MolangUtils.setupPlayerStructs(queryStruct, player)
+
                     queryStruct.addFunctions(
                         mapOf(
                             "zone" to java.util.function.Function { params ->
@@ -156,6 +161,15 @@ object JourneyEvents {
                             }
                         )
                     )
+                    if(entity is PokemonEntity) {
+                        queryStruct.addFunctions(
+                            mapOf(
+                                "pokemon" to java.util.function.Function { params ->
+                                    return@Function entity.pokemon.asStruct()
+                                }
+                            )
+                        )
+                    }
                     val filterExpression = subtask.getOrParseFilterExpression()
                     val result = runtime.resolveBoolean(filterExpression)
                     if (result) {
@@ -182,9 +196,9 @@ object JourneyEvents {
                     activeSubtasks.forEach { (taskId, subtask, progress) ->
                         val runtime = createMolangRuntime()
                         val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                        
 
-                        // Add 'battle' function to 'query' struct
+                        MolangUtils.setupPlayerStructs(queryStruct, player)
+
                         queryStruct.addFunctions(
                             mapOf(
                                 "battle" to java.util.function.Function { params ->
@@ -199,18 +213,7 @@ object JourneyEvents {
                                                 val opponentPokemon =
                                                     opponentActor.pokemonList[params.getDouble(0).toInt()]
                                                 if (opponentPokemon != null) {
-                                                    return@Function QueryStruct(hashMapOf(
-                                                        "species" to java.util.function.Function { params ->
-                                                            StringValue(opponentPokemon.originalPokemon.species.resourceIdentifier.toString())
-                                                        },
-                                                        "form" to java.util.function.Function { params ->
-                                                            StringValue(opponentPokemon.originalPokemon.form.name)
-                                                        },
-                                                        "level" to java.util.function.Function { params ->
-                                                            DoubleValue(opponentPokemon.originalPokemon.level.toDouble())
-                                                        }
-                                                        // Add other opponent fields if needed
-                                                    ))
+                                                    return@Function opponentPokemon.originalPokemon.asStruct()
                                                 }
                                             }
                                             return@Function QueryStruct(hashMapOf())
@@ -223,21 +226,7 @@ object JourneyEvents {
                                                     val index = params.getDouble(0).toInt()
                                                     val pokemon = pokemonList.getOrNull(index)
                                                     if (pokemon != null) {
-                                                        return@Function QueryStruct(hashMapOf(
-                                                            "species" to java.util.function.Function { params ->
-                                                                StringValue(pokemon.originalPokemon.species.resourceIdentifier.toString())
-                                                            },
-                                                            "form" to java.util.function.Function { params ->
-                                                                StringValue(pokemon.originalPokemon.form.name)
-                                                            },
-                                                            "level" to java.util.function.Function { params ->
-                                                                DoubleValue(pokemon.originalPokemon.level.toDouble())
-                                                            },
-                                                            "primary_type" to java.util.function.Function { params ->
-                                                                StringValue(pokemon.originalPokemon.types.first().name)
-                                                            }
-                                                            // Add other fields if needed
-                                                        ))
+                                                        return@Function pokemon.originalPokemon.asStruct()
                                                     }
                                                     return@Function QueryStruct(hashMapOf())
                                                 },
@@ -277,13 +266,12 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                
+                MolangUtils.setupPlayerStructs(queryStruct, player)
 
-                // Add 'battle' function to 'query' struct
+
                 queryStruct.addFunctions(
                     mapOf(
                         "battle" to java.util.function.Function { params ->
-                            // Create 'battle' struct with functions
                             return@Function QueryStruct(hashMapOf(
                                 "isPvW" to java.util.function.Function { params ->
                                     DoubleValue(if (event.battle.isPvW) 1.0 else 0.0)
@@ -293,21 +281,7 @@ object JourneyEvents {
                                     if (opponentActor != null) {
                                         val opponentPokemon = opponentActor.pokemonList.firstOrNull()
                                         if (opponentPokemon != null) {
-                                            return@Function QueryStruct(hashMapOf(
-                                                "species" to java.util.function.Function { params ->
-                                                    StringValue(opponentPokemon.originalPokemon.species.resourceIdentifier.toString())
-                                                },
-                                                "form" to java.util.function.Function { params ->
-                                                    StringValue(opponentPokemon.originalPokemon.form.name)
-                                                },
-                                                "level" to java.util.function.Function { params ->
-                                                    DoubleValue(opponentPokemon.originalPokemon.level.toDouble())
-                                                },
-                                                "primary_type" to java.util.function.Function { params ->
-                                                    StringValue(opponentPokemon.originalPokemon.types.first().name)
-                                                }
-                                                // Add other opponent fields if needed
-                                            ))
+                                            return@Function opponentPokemon.originalPokemon.asStruct()
                                         }
                                     }
                                     return@Function QueryStruct(hashMapOf())
@@ -341,7 +315,6 @@ object JourneyEvents {
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
                 MolangUtils.setupPlayerStructs(queryStruct, serverPlayer)
 
-                // Add 'item' function to 'query' struct
                 queryStruct.addFunctions(
                     mapOf(
                         "item" to java.util.function.Function { params ->
@@ -376,36 +349,15 @@ object JourneyEvents {
         CobblemonEvents.POKEMON_CAPTURED.subscribe { event ->
             val player = event.player
             val data = player get JourneyDataObject
-            val activeSubtasks = data.getActiveSubtasks("POKEMON_CAPTURE")
+            val activeSubtasks = data.getActiveSubtasks("POKEMON_CAUGHT")
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                
-
-                // Add 'pokemon' function to 'query' struct
+                MolangUtils.setupPlayerStructs(queryStruct, player)
                 queryStruct.addFunctions(
                     mapOf(
                         "pokemon" to java.util.function.Function { params ->
-                            return@Function QueryStruct(hashMapOf(
-                                "species" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.species.resourceIdentifier.toString())
-                                },
-                                "form" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.form.name)
-                                },
-                                "level" to java.util.function.Function { params ->
-                                    DoubleValue(event.pokemon.level.toDouble())
-                                },
-                                "is_starter" to java.util.function.Function { params ->
-                                    val data = player get JourneyDataObject
-                                    val starterPokemon = data.starterPokemon
-                                    DoubleValue(if (starterPokemon != null && starterPokemon == event.pokemon.uuid) 1.0 else 0.0)
-                                },
-                                "primary_type" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.types.first().name)
-                                }
-                                // Add other fields if needed
-                            ))
+                            return@Function event.pokemon.asStruct()
                         }
                     )
                 )
@@ -432,32 +384,13 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                
+                MolangUtils.setupPlayerStructs(queryStruct, player)
 
-                // Add 'pokemon' function to 'query' struct
+
                 queryStruct.addFunctions(
                     mapOf(
                         "pokemon" to java.util.function.Function { params ->
-                            return@Function QueryStruct(hashMapOf(
-                                "species" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.species.resourceIdentifier.toString())
-                                },
-                                "form" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.form.name)
-                                },
-                                "level" to java.util.function.Function { params ->
-                                    DoubleValue(event.pokemon.level.toDouble())
-                                },
-                                "is_starter" to java.util.function.Function { params ->
-                                    val data = player get JourneyDataObject
-                                    val starterPokemon = data.starterPokemon
-                                    DoubleValue(if (starterPokemon != null && starterPokemon == event.pokemon.uuid) 1.0 else 0.0)
-                                },
-                                "primary_type" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.types.first().name)
-                                }
-                                // Add other fields if needed
-                            ))
+                            return@Function event.pokemon.asStruct()
                         }
                     )
                 )
@@ -484,32 +417,13 @@ object JourneyEvents {
             activeSubtasks.forEach { (taskId, subtask, progress) ->
                 val runtime = createMolangRuntime()
                 val queryStruct = runtime.environment.getStruct("query") as QueryStruct
-                
+                MolangUtils.setupPlayerStructs(queryStruct, player)
 
-                // Add 'pokemon' function to 'query' struct
+
                 queryStruct.addFunctions(
                     mapOf(
                         "pokemon" to java.util.function.Function { params ->
-                            return@Function QueryStruct(hashMapOf(
-                                "species" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.species.resourceIdentifier.toString())
-                                },
-                                "form" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.form.name)
-                                },
-                                "level" to java.util.function.Function { params ->
-                                    DoubleValue(event.pokemon.level.toDouble())
-                                },
-                                "is_starter" to java.util.function.Function { params ->
-                                    val data = player get JourneyDataObject
-                                    val starterPokemon = data.starterPokemon
-                                    DoubleValue(if (starterPokemon != null && starterPokemon == event.pokemon.uuid) 1.0 else 0.0)
-                                },
-                                "primary_type" to java.util.function.Function { params ->
-                                    StringValue(event.pokemon.types.first().name)
-                                }
-                                // Add other fields if needed
-                            ))
+                            return@Function event.pokemon.asStruct()
                         }
                     )
                 )
@@ -528,12 +442,13 @@ object JourneyEvents {
         }
     }
 
-    fun createMolangRuntime(): MoLangRuntime {
-        val runtime = MoLangRuntime().setup()
-        return runtime
-    }
-
     fun init() {}
+
+}
+
+fun createMolangRuntime(): MoLangRuntime {
+    val runtime = MoLangRuntime().setup()
+    return runtime
 }
 
 private fun <E> List<E>.ifNotEmpty(function: (List<E>) -> Unit) {

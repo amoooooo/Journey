@@ -1,0 +1,10 @@
+{
+  "hitbox": "player",
+  "names": [
+    "Space Cadet Nova"
+  ],
+  "interaction": {
+    "type": "dialogue",
+    "dialogue": "cobblemon:space_cadet"
+  }
+}

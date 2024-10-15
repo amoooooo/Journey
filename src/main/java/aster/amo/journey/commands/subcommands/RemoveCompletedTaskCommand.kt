@@ -1,6 +1,8 @@
 package aster.amo.journey.commands.subcommands
 import aster.amo.ceremony.utils.extension.get
 import aster.amo.journey.data.JourneyDataObject
+import aster.amo.journey.utils.inform
+import aster.amo.journey.utils.parseToNative
 import com.cobblemon.mod.common.util.removeIf
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
@@ -14,6 +16,7 @@ import kotlinx.coroutines.CompletableDeferred
 import net.minecraft.commands.CommandSourceStack
 import net.minecraft.commands.Commands
 import net.minecraft.commands.SharedSuggestionProvider
+import net.minecraft.commands.arguments.ResourceLocationArgument
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.network.chat.Component
 import java.util.concurrent.CompletableFuture
@@ -26,7 +29,7 @@ class RemoveCompletedTaskCommand {
     fun build(): LiteralCommandNode<CommandSourceStack> {
         return Commands.literal("removecompleted")
                         .then(
-                            Commands.argument("taskName", StringArgumentType.string())
+                            Commands.argument("task", ResourceLocationArgument.id())
                                 .suggests{ ctx, builder ->
                                     val source = ctx.source
                                     val player = source.playerOrException
@@ -34,34 +37,29 @@ class RemoveCompletedTaskCommand {
                                     val completedTasks = journeyData.completedQuests.keys.map { it.toString() }
                                     return@suggests SharedSuggestionProvider.suggest(completedTasks, builder)
                                 }
-                                .executes(::executeRemoveCompletedTask)
+                                .executes { context ->
+                                    val source = context.source
+                                    val player = source.player ?: run {
+                                        source.sendFailure(Component.literal("This command can only be used by players."))
+                                        return@executes 0
+                                    }
+
+                                    val taskName = ResourceLocationArgument.getId(context, "task")
+
+                                    val journeyData = player get JourneyDataObject
+
+                                    if (!journeyData.completedQuests.keys.map { it }.contains(taskName)) {
+                                        source.sendFailure(Component.literal("Task '$taskName' is not in your completed quests."))
+                                        return@executes 0
+                                    }
+
+                                    // Remove the task from completed quests
+                                    journeyData.completedQuests.removeIf { it.key == taskName }
+                                    player inform "Task '${taskName.toString()}' has been removed from your completed quests.".parseToNative()
+                                    return@executes 1
+                                }
                         ).build()
 
-    }
-
-    /**
-     * Executes the command to remove a completed task.
-     */
-    private fun executeRemoveCompletedTask(context: CommandContext<CommandSourceStack>): Int {
-        val source = context.source
-        val player = source.player ?: run {
-            source.sendFailure(Component.literal("This command can only be used by players."))
-            return 0
-        }
-
-        val taskName = StringArgumentType.getString(context, "taskName").asResource() // Implement asResource()
-
-        val journeyData = player get JourneyDataObject
-
-        if (!journeyData.completedQuests.keys.map { it.toString() }.contains(taskName)) {
-            source.sendFailure(Component.literal("Task '$taskName' is not in your completed quests."))
-            return 0
-        }
-
-        // Remove the task from completed quests
-        journeyData.completedQuests.removeIf { it.toString() == taskName }
-
-        return 1
     }
 
     /**

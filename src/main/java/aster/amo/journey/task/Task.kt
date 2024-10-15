@@ -21,7 +21,8 @@ class Task(
     @SerializedName("repeat_interval") val repeatInterval: Int = 0,
     @SerializedName("repeat_limit") val repeatLimit: Int = 0,
     @SerializedName("starter_npc") val starterNPC: String = "",
-    val tasks: ArrayDeque<Subtask> = ArrayDeque<Subtask>()
+    val tasks: ArrayDeque<Subtask> = ArrayDeque<Subtask>(),
+    val script: String = ""
 ) {
 
     fun id(): ResourceLocation = TaskRegistry.TASKS.keys.first { TaskRegistry.TASKS[it] == this }
