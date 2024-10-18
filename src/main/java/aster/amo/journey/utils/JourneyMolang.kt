@@ -4,6 +4,7 @@ import aster.amo.ceremony.utils.extension.get
 import aster.amo.journey.Journey
 import aster.amo.journey.data.JourneyDataObject
 import aster.amo.journey.task.TaskRegistry
+import aster.amo.journey.timeline.Timeline
 import com.bedrockk.molang.runtime.MoParams
 import com.bedrockk.molang.runtime.struct.QueryStruct
 import com.bedrockk.molang.runtime.value.DoubleValue
@@ -209,6 +210,11 @@ object JourneyMolang {
             map.put("execute_command") { params ->
                 val command = params.getString(0)
                 player.server!!.commands.dispatcher.execute(command.replace("{player}", player.name.string), player.server!!.createCommandSourceStack())
+            }
+            map.put("launch_timeline") { params ->
+                val timelineName = params.getString(0)
+                val timeline = Timeline.TIMELINES[timelineName] ?: return@put DoubleValue(0.0)
+                timeline.launch(player as ServerPlayer)
             }
             map
         }

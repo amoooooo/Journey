@@ -1,8 +1,5 @@
 package aster.amo.journey.config
 
-import com.cobblemon.mod.common.util.asResource
-import com.google.gson.stream.JsonReader
-import net.minecraft.resources.ResourceLocation
 import aster.amo.journey.Journey
 import aster.amo.journey.config.zones.ZoneConfig
 import aster.amo.journey.flag.FilteredEntity
@@ -10,8 +7,12 @@ import aster.amo.journey.flag.PerPlayerStructure
 import aster.amo.journey.task.Task
 import aster.amo.journey.task.TaskRegistry
 import aster.amo.journey.task.TaskSource
+import aster.amo.journey.timeline.Timeline
 import aster.amo.journey.utils.Utils
 import aster.amo.journey.zones.Zone
+import com.cobblemon.mod.common.util.asResource
+import com.google.gson.stream.JsonReader
+import net.minecraft.resources.ResourceLocation
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
@@ -23,7 +24,7 @@ import java.nio.file.StandardCopyOption
 object ConfigManager {
     private var assetPackage = "assets/${Journey.MOD_ID}"
 
-    lateinit var CONFIG: aster.amo.journey.config.JourneyConfig
+    lateinit var CONFIG: JourneyConfig
     lateinit var ZONE_CONFIG: ZoneConfig
 
     fun load() {
@@ -31,19 +32,46 @@ object ConfigManager {
         copyDefaults()
 
         // Load all files
-        CONFIG = loadFile("config.json", aster.amo.journey.config.JourneyConfig())
+        CONFIG = loadFile("config.json", JourneyConfig())
         ZONE_CONFIG = loadFile("zones.json", ZoneConfig()).also { it ->
             val zoneDir = File(Journey.INSTANCE.configDir, "zones")
             it.zones.addAll(loadZoneConfigs(zoneDir))
         }
         TaskRegistry.clear()
-        loadTasks(File(Journey.INSTANCE.configDir, "tasks")).forEach { (rl, task) -> TaskRegistry.registerTask(rl, task) }
+        loadTasks(File(Journey.INSTANCE.configDir, "tasks")).forEach { (rl, task) ->
+            TaskRegistry.registerTask(
+                rl,
+                task
+            )
+        }
         TaskSource.clear()
-        loadSources(File(Journey.INSTANCE.configDir, "sources")).forEach { (rl, source) -> TaskSource.registerSource(rl, source) }
+        loadSources(File(Journey.INSTANCE.configDir, "sources")).forEach { (rl, source) ->
+            TaskSource.registerSource(
+                rl,
+                source
+            )
+        }
         PerPlayerStructure.structures.clear()
-        loadPerPlayerStructures(File(Journey.INSTANCE.configDir, "per_player_structures")).forEach { (rl, structure) -> PerPlayerStructure.structures.add(structure) }
+        loadPerPlayerStructures(
+            File(
+                Journey.INSTANCE.configDir,
+                "per_player_structures"
+            )
+        ).forEach { (rl, structure) -> PerPlayerStructure.structures.add(structure) }
         FilteredEntity.filters.clear()
-        loadFilteredEntities(File(Journey.INSTANCE.configDir, "filtered_entities")).forEach { filter -> FilteredEntity.filters.add(filter) }
+        loadFilteredEntities(
+            File(
+                Journey.INSTANCE.configDir,
+                "filtered_entities"
+            )
+        ).forEach { filter -> FilteredEntity.filters.add(filter) }
+        Timeline.TIMELINES.clear()
+        loadTimelines(File(Journey.INSTANCE.configDir, "timelines")).forEach { (rl, timeline) ->
+            Timeline.registerTimeline(
+                rl.toString(),
+                timeline
+            )
+        }
     }
 
     private fun copyDefaults() {
@@ -58,7 +86,7 @@ object ConfigManager {
         val tasks = mutableMapOf<ResourceLocation, Task>()
         if (directory.exists() && directory.isDirectory) {
             loadConfigsRecursive(directory, tasks) { file ->
-                val taskName = "journey:"+file.nameWithoutExtension
+                val taskName = "journey:" + file.nameWithoutExtension
                 try {
                     var path = file.toPath()
                     // remove Islander.INSTANCE.configDir from the path
@@ -78,7 +106,7 @@ object ConfigManager {
         val tasks = mutableMapOf<ResourceLocation, TaskSource>()
         if (directory.exists() && directory.isDirectory) {
             loadConfigsRecursive(directory, tasks) { file ->
-                val taskName = "journey:"+file.nameWithoutExtension
+                val taskName = "journey:" + file.nameWithoutExtension
                 try {
                     var path = file.toPath()
                     path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
@@ -97,7 +125,7 @@ object ConfigManager {
         val structures = mutableMapOf<ResourceLocation, PerPlayerStructure>()
         if (directory.exists() && directory.isDirectory) {
             loadConfigsRecursive(directory, structures) { file ->
-                val structureName = "journey:"+file.nameWithoutExtension
+                val structureName = "journey:" + file.nameWithoutExtension
                 try {
                     var path = file.toPath()
                     path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
@@ -154,6 +182,26 @@ object ConfigManager {
         }
         return filters
     }
+
+    fun loadTimelines(directory: File): MutableMap<ResourceLocation, Timeline> {
+        val timelines = mutableMapOf<ResourceLocation, Timeline>()
+        if (directory.exists() && directory.isDirectory) {
+            loadConfigsRecursive(directory, timelines) { file ->
+                val timelineName = "journey:" + file.nameWithoutExtension
+                try {
+                    var path = file.toPath()
+                    path = path.subpath(Journey.INSTANCE.configDir.toPath().nameCount, path.nameCount)
+                    val timeline = loadFile(path.toString(), Timeline())
+                    Pair(timelineName.asResource(), timeline)
+                } catch (e: Exception) {
+                    Journey.LOGGER.error("Error loading task config from ${file.absolutePath}", e)
+                    Pair(timelineName.asResource(), Timeline())
+                }
+            }
+        }
+        return timelines
+    }
+
 
     private fun <T> loadConfigsRecursive(directory: File, list: MutableList<T>, loadAction: (File) -> T) {
         directory.listFiles()?.forEach { file ->

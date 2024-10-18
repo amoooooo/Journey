@@ -10,6 +10,9 @@ import aster.amo.journey.task.*
 import aster.amo.journey.task.event.JourneyEvent
 import aster.amo.journey.task.event.JourneyEvents
 import aster.amo.journey.task.reward.RewardTypeAdapterFactory
+import aster.amo.journey.timeline.Timeline
+import aster.amo.journey.timeline.Timeline.*
+import aster.amo.journey.timeline.Timeline.ActionTypeAdapter
 import aster.amo.journey.utils.JourneyMolang
 import aster.amo.journey.utils.MolangUtils
 import aster.amo.journey.utils.StructureThread
@@ -95,6 +98,9 @@ class Journey : ModInitializer {
         .registerTypeAdapter(Subtask::class.java, SubtaskTypeAdapter())
         .registerTypeAdapter(Vector3f::class.java, Vector3fTypeAdapter())
         .registerTypeAdapter(TaskSource::class.java, TaskSourceTypeAdapter(Vector3fTypeAdapter()))
+        .registerTypeAdapter(Action::class.java, ActionTypeAdapter())
+        .registerTypeAdapter(ActionsAtTick::class.java, ActionsAtTickTypeAdapter())
+        .registerTypeAdapter(Timeline::class.java, TimelineTypeAdapter())
         .disableHtmlEscaping().create()
 
     var gsonPretty: Gson = gson.newBuilder().setPrettyPrinting().create()
